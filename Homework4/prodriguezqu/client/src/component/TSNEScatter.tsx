@@ -12,12 +12,6 @@ interface TSNERow {
   category: string;
 }
 
-const tsneFiles = import.meta.glob("../../data/tsne.csv", {
-  query: "?raw",
-  import: "default",
-  eager: true,
-}) as Record<string, string>;
-
 const margin = { top: 20, right: 30, bottom: 60, left: 60 };
 
 const categoryColors: Record<string, string> = {
@@ -37,22 +31,28 @@ export function TSNEScatter({ selectedTicker }: TSNEScatterProps) {
   const [containerHeight, setContainerHeight] = useState(0);
 
   useEffect(() => {
-    const csvText = tsneFiles["../../data/tsne.csv"];
+    // HW4 says the frontend should fetch the t-SNE data from the backend instead of a local csv file.
+    fetch("http://localhost:8000/tsne/")
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Could not fetch t-SNE data");
+        }
+        return response.json();
+      })
+      .then((data) => {
+        // just mapping the backend field names into the same row shape the scatter plot already uses
+        const parsedRows = data.map((row: { Stock: string; x: number; y: number; category: string }) => ({
+          ticker: String(row.Stock),
+          x: Number(row.x),
+          y: Number(row.y),
+          category: String(row.category),
+        })) as TSNERow[];
 
-    if (!csvText) {
-      setRows([]);
-      return;
-    }
-
-    // Use the t-SNE coordinates generated from Homework 2 and visualize them in D3.
-    const parsedRows = d3.csvParse(csvText, (row) => ({
-      ticker: String(row.ticker),
-      x: Number(row.x),
-      y: Number(row.y),
-      category: String(row.category),
-    })) as TSNERow[];
-
-    setRows(parsedRows);
+        setRows(parsedRows);
+      })
+      .catch(() => {
+        setRows([]);
+      });
   }, []);
 
   useEffect(() => {

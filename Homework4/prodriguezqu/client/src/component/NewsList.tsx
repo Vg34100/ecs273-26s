@@ -1,36 +1,43 @@
 import { useEffect, useMemo, useState } from "react";
-import newsData from "virtual:news-data";
 
 interface NewsListProps {
   selectedTicker: string;
 }
 
 interface NewsItem {
-  id: string;
-  ticker: string;
-  title: string;
-  date: string;
+  _id: string;
+  Stock: string;
+  Title: string;
+  Date: string;
   content: string;
 }
-
-type NewsByTicker = Record<string, NewsItem[]>;
 
 export function NewsList({ selectedTicker }: NewsListProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showOnlySelected, setShowOnlySelected] = useState(false);
+  const [allNewsItems, setAllNewsItems] = useState<NewsItem[]>([]);
 
-  const allNewsItems = useMemo(() => {
-    const allNews = newsData as NewsByTicker;
-    const flattened = Object.entries(allNews).flatMap(([ticker, items]) =>
-      items.map((item) => ({
-        ...item,
-        ticker,
-      })),
-    );
+  useEffect(() => {
+    // HW4 says the news list should update using the backend news endpoint.
+    fetch("http://localhost:8000/stocknews/")
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Could not fetch stock news");
+        }
+        return response.json();
+      })
+      .then((data: NewsItem[]) => {
+        setAllNewsItems(data);
+      })
+      .catch(() => {
+        setAllNewsItems([]);
+      });
+  }, []);
 
+  const filteredAllNewsItems = useMemo(() => {
     // some of the HW1/TA scraped pages are basically Yahoo error/search pages, so I filtered those out here
     // I know Piazza said not to worry too much about intermediate data, but I thought the view looked better if those were skipped
-    return flattened
+    return allNewsItems
       .filter((item) => {
         const content = item.content;
         return !(
@@ -39,22 +46,22 @@ export function NewsList({ selectedTicker }: NewsListProps) {
           content.includes("Tip: Try a valid symbol or a specific company name for relevant results")
         );
       })
-      .sort((a, b) => b.date.localeCompare(a.date));
-  }, []);
+      .sort((a, b) => b.Date.localeCompare(a.Date));
+  }, [allNewsItems]);
 
   // I first thought it made sense to only show the selected stock here,
   // but this is closer to the HW3 bonus wording since the selected stock can auto-expand inside the bigger list.
   const newsItems = useMemo(() => {
     if (showOnlySelected) {
-      return allNewsItems.filter((item) => item.ticker === selectedTicker);
+      return filteredAllNewsItems.filter((item) => item.Stock === selectedTicker);
     }
 
-    return allNewsItems;
-  }, [allNewsItems, selectedTicker, showOnlySelected]);
+    return filteredAllNewsItems;
+  }, [filteredAllNewsItems, selectedTicker, showOnlySelected]);
 
   useEffect(() => {
-    const firstMatch = newsItems.find((item) => item.ticker === selectedTicker);
-    setExpandedId(firstMatch?.id ?? null);
+    const firstMatch = newsItems.find((item) => item.Stock === selectedTicker);
+    setExpandedId(firstMatch?._id ?? null);
   }, [newsItems, selectedTicker]);
 
   if (newsItems.length === 0) {
@@ -81,22 +88,22 @@ export function NewsList({ selectedTicker }: NewsListProps) {
       </div>
 
       {newsItems.map((item) => {
-        const isExpanded = expandedId === item.id;
-        const isSelectedTicker = item.ticker === selectedTicker;
+        const isExpanded = expandedId === item._id;
+        const isSelectedTicker = item.Stock === selectedTicker;
 
         return (
           <button
-            key={item.id}
+            key={item._id}
             type="button"
             className={`w-full rounded-lg border bg-white p-3 text-left shadow-sm ${
               isSelectedTicker ? "border-blue-400" : "border-gray-300"
             }`}
-            onClick={() => setExpandedId(isExpanded ? null : item.id)}
+            onClick={() => setExpandedId(isExpanded ? null : item._id)}
           >
             {/* Show title and date */}
-            <div className="mb-1 text-xs font-medium text-blue-700">{item.ticker}</div>
-            <div className="font-semibold text-sm text-gray-900">{item.title}</div>
-            <div className="mt-1 text-xs text-gray-500">{item.date}</div>
+            <div className="mb-1 text-xs font-medium text-blue-700">{item.Stock}</div>
+            <div className="font-semibold text-sm text-gray-900">{item.Title}</div>
+            <div className="mt-1 text-xs text-gray-500">{item.Date}</div>
 
             {/* On click, it should expand to show full content */}
             {isExpanded && (

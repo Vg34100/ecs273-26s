@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { LineChart } from "./component/LineChart";
 import RenderOptions from "./component/options";
 import { TSNEScatter } from "./component/TSNEScatter";
@@ -7,11 +7,20 @@ import { NewsList } from "./component/NewsList";
 
 export default function App() {
     const [selectedTicker, setSelectedTicker] = useState("AAPL");
+    const [stockList, setStockList] = useState<string[]>([]);
+
+    useEffect(() => {
+        // HW4 says the dropdown should fetch the stock list from the backend
+        fetch("http://localhost:8000/stock_list")
+            .then((response) => response.json())
+            .then((data) => setStockList(data.tickers ?? []))
+            .catch(() => setStockList([]));
+    }, []);
 
     return (
         <div className="flex h-full w-full min-h-0 flex-col overflow-hidden">
             <header className="bg-zinc-400 text-white p-2 flex flex-row align-center shrink-0">
-                <h2 className="text-left text-2xl">Homework 3</h2>
+                <h2 className="text-left text-2xl">Homework 4</h2>
                 <label htmlFor="bar-select" className="mx-2">
                     Select a category:
                     <select
@@ -22,7 +31,7 @@ export default function App() {
                             setSelectedTicker(event.target.value)
                         }
                     >
-                        <RenderOptions />
+                        <RenderOptions stockList={stockList} />
                     </select>
                 </label>
             </header>

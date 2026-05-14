@@ -13,12 +13,6 @@ interface StockRow {
   close: number;
 }
 
-const stockFiles = import.meta.glob("../../data/stockdata/*.csv", {
-  query: "?raw",
-  import: "default",
-  eager: true,
-}) as Record<string, string>;
-
 const margin = { top: 20, right: 120, bottom: 60, left: 60 };
 const lineColors = {
   open: "#2563eb",
@@ -36,23 +30,29 @@ export function LineChart({ selectedTicker }: LineChartProps) {
   const [zoomMode, setZoomMode] = useState<"x" | "xy">("x");
 
   useEffect(() => {
-    const filePath = `../../data/stockdata/${selectedTicker}.csv`;
-    const csvText = stockFiles[filePath];
+    // HW4 says the frontend should fetch stock data from the backend instead of local csv files.
+    fetch(`http://localhost:8000/stock/${selectedTicker}`)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Could not fetch stock data");
+        }
+        return response.json();
+      })
+      .then((data) => {
+        // keeping the rest of the chart the same and just reshaping the API response into the old row format
+        const parsedRows = data.stock_series.map((row: { date: string; Open: number; High: number; Low: number; Close: number }) => ({
+          date: new Date(row.date),
+          open: Number(row.Open),
+          high: Number(row.High),
+          low: Number(row.Low),
+          close: Number(row.Close),
+        })) as StockRow[];
 
-    if (!csvText) {
-      setRows([]);
-      return;
-    }
-
-    const parsedRows = d3.csvParse(csvText, (row) => ({
-      date: new Date(row.Date as string),
-      open: Number(row.Open),
-      high: Number(row.High),
-      low: Number(row.Low),
-      close: Number(row.Close),
-    })) as StockRow[];
-
-    setRows(parsedRows);
+        setRows(parsedRows);
+      })
+      .catch(() => {
+        setRows([]);
+      });
   }, [selectedTicker]);
 
   useEffect(() => {
