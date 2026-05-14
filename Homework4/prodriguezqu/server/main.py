@@ -3,7 +3,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 
 from fastapi.middleware.cors import CORSMiddleware
 
-from data_scheme import StockListModel, StockModelV2, StockNewsModelList, tsneDataModel
+from data_scheme import StockListModel, StockModelV2, StockNewsModel, StockNewsModelList, tsneDataModel
 
 # MongoDB connection (localhost, default port)
 client = AsyncIOMotorClient("mongodb://localhost:27017")
@@ -45,23 +45,23 @@ async def get_stock_list():
     return stock_list
 
 @app.get("/stocknews/", 
-        response_model=StockNewsModelList
+        response_model=list[StockNewsModel]
     )
-async def get_stock_news(stock_name: str = 'XOM') -> StockNewsModelList:
+async def get_stock_news(stock_name: str | None = None) -> list[StockNewsModel]:
     """
-    Get the list of news for a specific stock from the database
-    The news is sorted by date in ascending order
+    Get the list of news from the database.
+    If a stock name is provided, only that stock's news is returned.
     """
-    await validate_stock_name(stock_name)
-
     stock_news_collection = db.get_collection("stock_news")
-    news_cursor = stock_news_collection.find({"Stock": stock_name}).sort("Date", 1)
-    news_list = await news_cursor.to_list(length=None)
+    query = {}
 
-    return {
-        "Stock": stock_name,
-        "News": news_list
-    }
+    if stock_name:
+        await validate_stock_name(stock_name)
+        query = {"Stock": stock_name}
+
+    news_cursor = stock_news_collection.find(query).sort("Date", 1)
+    news_list = await news_cursor.to_list(length=None)
+    return news_list
 
 @app.get("/stock/{stock_name}", 
         response_model=StockModelV2
