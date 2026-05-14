@@ -60,7 +60,9 @@ class tsneDataModel(BaseModel):
     """
     Model for t-SNE data
     """
+    # this was the only schema field I added here, since the scatter plot still needs the category color
     _id: PyObjectId
     Stock: str
     x: float
     y: float
+    category: str
